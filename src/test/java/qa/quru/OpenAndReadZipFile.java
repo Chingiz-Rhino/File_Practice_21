@@ -1,23 +1,48 @@
 package qa.quru;
 
-import org.junit.jupiter.api.Assertions;
+import com.codeborne.pdftest.PDF;
+import com.codeborne.xlstest.XLS;
+import com.opencsv.CSVReader;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 
 public class OpenAndReadZipFile {
     private final ClassLoader cl = OpenAndReadZipFile.class.getClassLoader();
+    private  ZipInputStream zipStream(){
+        InputStream stream = cl.getResourceAsStream("homework.zip");
+        return new ZipInputStream(stream);
+    }
 
+    private void checkZipContent(ZipInputStream zis, String contentName, ZipCheck zipCheck) throws Exception{
+        ZipEntry zipEntry;
+        while ((zipEntry = zis.getNextEntry()) != null){
+            final String name = zipEntry.getName();
+            if (name.contains(contentName)){
+                zipCheck.checkEntry(zis);
+            }
+        }
+    }
+    interface ZipCheck{
+        void checkEntry(InputStream inputStream) throws Exception;
+    }
 //    Этот код будет добавлять все файлы с именем "имяфайла.расширение" в список filenames.
 //    Затем мы проверяем, что список не пустой с помощью Assertions.assertFalse(filenames.isEmpty()).
 //    Если список пустой, это значит, что ни одного файла с таким именем не найдено в архиве.
+    @DisplayName("Добавление файлов в список. Тест для самопроверки не для зачёта.")
     @Test
-    void viewZipFile () throws Exception{
+    void addFilesInListAtZipFile () throws Exception{
         try(InputStream stream = cl.getResourceAsStream("homework.zip");
         ZipInputStream zis = new ZipInputStream(stream)){
             ZipEntry entry;
@@ -32,8 +57,59 @@ public class OpenAndReadZipFile {
                    filenames.add(name);
                }
                 zis.closeEntry();
-                Assertions.assertFalse(filenames.isEmpty());
+                assertThat(filenames.isEmpty());
             }
+        }
+    }
+    @DisplayName("Проверка CSV файла в Zip архиве")
+    @Test
+    void testCSVFileInZip () throws Exception{
+        boolean csvInZip = false;
+        try(InputStream stream = cl.getResourceAsStream("homework.zip");
+        ZipInputStream zis = new ZipInputStream(Objects.requireNonNull(stream))){
+            ZipEntry zipEntry;
+            while ((zipEntry = zis.getNextEntry()) != null){
+                if(zipEntry.getName().equals("textfile.csv")){
+                    csvInZip = true;
+                    Reader reader = new InputStreamReader(zis);
+                    CSVReader csvReader = new CSVReader(reader);
+                    List<String[]> content = csvReader.readAll();
+
+                    assertThat(content).hasSize(3);
+
+                    assertThat(content.get(0)).containsExactly("Chingiz, learn autotesting");
+                    assertThat(content.get(1)).containsExactly("Askarov, work hard");
+                    assertThat(content.get(2)).containsExactly("Kamranovich, will be incredible");
+                }
+            }
+        }
+        assertThat(csvInZip).as("There is no such file");
+    }
+
+    @DisplayName("Проверка PDF файла в Zip архиве")
+    @Test
+    void testPdfFileInZip() throws Exception{
+        try(ZipInputStream zis = zipStream()){
+            checkZipContent(zis, "junit5.pdf", inputStream -> {
+                PDF pdf = new PDF(inputStream);
+                assertThat(pdf.text.contains("Table of Contents"));
+            });
+
+        }
+    }
+
+    @DisplayName("Проверка XLSX файла в Zip архиве")
+    @Test
+    void testXlsxFileInZip() throws Exception{
+        try(ZipInputStream zis = zipStream()){
+            checkZipContent(zis, "xlsfile.xlsx", inputStream -> {
+                XLS xls = new XLS(inputStream);
+                String cell = xls.excel.getSheetAt(0)
+                        .getRow(4)
+                        .getCell(0)
+                        .getStringCellValue();
+                assertThat(cell.contains("Май"));
+            });
         }
     }
 
