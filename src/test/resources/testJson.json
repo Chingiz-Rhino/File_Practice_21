@@ -1,0 +1,16 @@
+{
+  "name": "John",
+  "age": 25,
+  "email": "john@example.com",
+  "address": {
+    "street": "123 Main St",
+    "city": "New York",
+    "state": "NY",
+    "zipcode": "10001"
+  },
+  "skills": {
+    "programming": "Java",
+    "database": "SQL"
+
+  }
+}
