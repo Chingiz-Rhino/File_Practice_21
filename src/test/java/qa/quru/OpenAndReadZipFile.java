@@ -3,6 +3,7 @@ package qa.quru;
 import com.codeborne.pdftest.PDF;
 import com.codeborne.xlstest.XLS;
 import com.opencsv.CSVReader;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -20,42 +21,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class OpenAndReadZipFile {
     private final ClassLoader cl = OpenAndReadZipFile.class.getClassLoader();
-    private  ZipInputStream zipStream(){
-        InputStream stream = cl.getResourceAsStream("homework.zip");
-        return new ZipInputStream(stream);
-    }
 
-    private void checkZipContent(ZipInputStream zis, String contentName, ZipCheck zipCheck) throws Exception{
-        ZipEntry zipEntry;
-        while ((zipEntry = zis.getNextEntry()) != null){
-            final String name = zipEntry.getName();
-            if (name.contains(contentName)){
-                zipCheck.checkEntry(zis);
-            }
-        }
-    }
-    interface ZipCheck{
-        void checkEntry(InputStream inputStream) throws Exception;
-    }
-//    Этот код будет добавлять все файлы с именем "имяфайла.расширение" в список filenames.
+    //    Этот код будет добавлять все файлы с именем "имяфайла.расширение" в список filenames.
 //    Затем мы проверяем, что список не пустой с помощью Assertions.assertFalse(filenames.isEmpty()).
 //    Если список пустой, это значит, что ни одного файла с таким именем не найдено в архиве.
     @DisplayName("Добавление файлов в список. Тест для самопроверки не для зачёта.")
     @Test
-    void addFilesInListAtZipFile () throws Exception{
-        try(InputStream stream = cl.getResourceAsStream("homework.zip");
-        ZipInputStream zis = new ZipInputStream(stream)){
+    void addFilesInListAtZipFile() throws Exception {
+        try (InputStream stream = cl.getResourceAsStream("homework.zip");
+             ZipInputStream zis = new ZipInputStream(stream)) {
             ZipEntry entry;
             List<String> filenames = new ArrayList<>();
-            while ((entry = zis.getNextEntry())!= null){
-               final String name = entry.getName();
-               if (name.equals("textfile.csv")){
-                   filenames.add(name);
-               } else if (name.equals("junit5.pdf")) {
-                   filenames.add(name);
-               } else if (name.equals("xlsfile.xls")) {
-                   filenames.add(name);
-               }
+            while ((entry = zis.getNextEntry()) != null) {
+                final String name = entry.getName();
+                if (name.equals("textfile.csv")) {
+                    filenames.add(name);
+                } else if (name.equals("junit5.pdf")) {
+                    filenames.add(name);
+                } else if (name.equals("xlsfile.xls")) {
+                    filenames.add(name);
+                }
                 zis.closeEntry();
                 assertThat(filenames.isEmpty());
             }
@@ -63,13 +48,13 @@ public class OpenAndReadZipFile {
     }
     @DisplayName("Проверка CSV файла в Zip архиве")
     @Test
-    void testCSVFileInZip () throws Exception{
+    void testCSVFileInZip() throws Exception {
         boolean csvInZip = false;
-        try(InputStream stream = cl.getResourceAsStream("homework.zip");
-        ZipInputStream zis = new ZipInputStream(Objects.requireNonNull(stream))){
+        try (InputStream stream = cl.getResourceAsStream("homework.zip");
+             ZipInputStream zis = new ZipInputStream(Objects.requireNonNull(stream))) {
             ZipEntry zipEntry;
-            while ((zipEntry = zis.getNextEntry()) != null){
-                if(zipEntry.getName().equals("textfile.csv")){
+            while ((zipEntry = zis.getNextEntry()) != null) {
+                if (zipEntry.getName().equals("textfile.csv")) {
                     csvInZip = true;
                     Reader reader = new InputStreamReader(zis);
                     CSVReader csvReader = new CSVReader(reader);
@@ -85,31 +70,40 @@ public class OpenAndReadZipFile {
         }
         assertThat(csvInZip).as("There is no such file");
     }
-
     @DisplayName("Проверка PDF файла в Zip архиве")
     @Test
-    void testPdfFileInZip() throws Exception{
-        try(ZipInputStream zis = zipStream()){
-            checkZipContent(zis, "junit5.pdf", inputStream -> {
-                PDF pdf = new PDF(inputStream);
-                assertThat(pdf.text.contains("Table of Contents"));
-            });
+    void testPdfFileInZip() throws Exception {
+        try (InputStream stream = cl.getResourceAsStream("homework.zip");
+             ZipInputStream zis = new ZipInputStream(stream)) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                final String name = entry.getName();
+                if (name.contains(".pdf")) {
+                    PDF pdf = new PDF(zis);
+                    Assertions.assertTrue(pdf.text.contains("Table of Contents"));
 
+                }
+            }
         }
-    }
 
+    }
     @DisplayName("Проверка XLSX файла в Zip архиве")
     @Test
-    void testXlsxFileInZip() throws Exception{
-        try(ZipInputStream zis = zipStream()){
-            checkZipContent(zis, "xlsfile.xlsx", inputStream -> {
-                XLS xls = new XLS(inputStream);
-                String cell = xls.excel.getSheetAt(0)
-                        .getRow(4)
-                        .getCell(0)
-                        .getStringCellValue();
-                assertThat(cell.contains("Май"));
-            });
+    void testXlsxFileInZip() throws Exception {
+        try (InputStream stream = cl.getResourceAsStream("homework.zip");
+             ZipInputStream zis = new ZipInputStream(stream)) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                final String name = entry.getName();
+                if (name.contains(".xlsx")) {
+                    XLS xls = new XLS(zis);
+                    Assertions.assertEquals("Май", xls.excel.getSheetAt(0).
+                            getRow(4).
+                            getCell(0).
+                            getStringCellValue());
+                }
+
+            }
         }
     }
 
